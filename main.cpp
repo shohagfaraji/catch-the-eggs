@@ -724,4 +724,75 @@ void keyboard(unsigned char key,int,int){
 		else exit(0);
 	} else if(key==' '){ // Spacebar for Pause/Resume
 		if(screenState==Screen::Playing) screenState=Screen::Paused;
-		else if(screenState==Screen::Paused) sc
+		else if(screenState==Screen::Paused) screenState=Screen::Playing;
+	} else if(key=='s'||key=='S'){
+		if(screenState==Screen::GameOver){ startGame(); }
+	} else if(key==13){ // Enter
+		if(screenState==Screen::Menu){
+			startGame();
+		} else if(screenState==Screen::Help || screenState==Screen::GameOver){
+			screenState=Screen::Menu;
+		}
+	}
+}
+void special(int key,int,int){
+	if(screenState==Screen::Menu){
+		if(key==GLUT_KEY_UP) menuIndex=(menuIndex+3)%4;
+		if(key==GLUT_KEY_DOWN) menuIndex=(menuIndex+1)%4;
+	} else if(screenState==Screen::Playing){
+		if(key==GLUT_KEY_LEFT) basket.x -= 0.08f;
+		if(key==GLUT_KEY_RIGHT) basket.x += 0.08f;
+		basket.x = std::max(worldL+basket.halfW, std::min(worldR-basket.halfW, basket.x));
+	}
+}
+void passiveMotion(int mx,int){
+	if(screenState==Screen::Playing){
+		float norm = mx/(float)winW;
+		float wx = worldL + norm*(worldR-worldL);
+		basket.x = std::max(worldL+basket.halfW, std::min(worldR-basket.halfW, wx));
+	}
+}
+
+void timerFunc(int){
+	int now = glutGet(GLUT_ELAPSED_TIME);
+	float dt = (now - lastTick)/1000.0f;
+	lastTick = now;
+	dt = std::min(dt, 0.033f);
+
+	if(screenState==Screen::Playing){
+		updateGame(dt);
+	}
+	glutPostRedisplay();
+	glutTimerFunc(16, timerFunc, 0);
+}
+
+int main(int argc,char** argv){
+	srand((unsigned)time(nullptr));
+	glutInit(&argc,argv);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
+	glutInitWindowSize(winW,winH);
+	glutCreateWindow("Catch The Eggs - Static Flowers");
+	ortho(); enableSmooth();
+
+	setupMenuButtons();
+	// Initialize clouds
+	for(int i=0; i<5; ++i) {
+		clouds.push_back({{frand(worldL, worldR), frand(0.5f, worldT - 0.1f)}, frand(0.5f, 1.2f), frand(0.02f, 0.08f)});
+	}
+
+	// Initialize flowers ONCE
+	initializeFlowers();
+
+	glutDisplayFunc(display);
+	glutReshapeFunc(reshape);
+	glutKeyboardFunc(keyboard);
+	glutSpecialFunc(special);
+	glutPassiveMotionFunc(passiveMotion);
+	glutMouseFunc(mouseClick);
+
+	lastTick = glutGet(GLUT_ELAPSED_TIME);
+	glutTimerFunc(16, timerFunc, 0);
+
+	glutMainLoop();
+	return 0;
+}
